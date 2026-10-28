@@ -1,0 +1,9 @@
+bin/
+obj/
+dist/
+*.user
+*.suo
+*.mrbbackup
+account.txt
+Profili/
+Avatar/
