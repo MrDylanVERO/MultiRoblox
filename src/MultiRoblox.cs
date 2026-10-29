@@ -71,7 +71,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.6";
+    public const string CurrentVersion = "3.2.7";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -753,7 +753,7 @@ class MainForm : Form
         {
             string transferCode = TransferCrypto.NewCode();
             Ui.SetupForm(f, 470, 440);
-            f.Text = Lang.Get("transferPc");
+            f.Text = Lang.Get("transferPc") + " - v" + UpdateChecker.CurrentVersion;
             f.StartPosition = FormStartPosition.CenterParent;
             f.ShowInTaskbar = false;
             f.MinimizeBox = false;
@@ -765,21 +765,21 @@ class MainForm : Form
             import.Click += (s, e) => { if (ImportTransfer(f)) f.Close(); };
 
             Ui.Lbl(f, Lang.Get("transferCodeHere"), 9, true, Ui.Gray, 30, 215, 410, 22, ContentAlignment.MiddleCenter);
-            TextBox codeBox = new TextBox();
-            codeBox.ReadOnly = true;
+            Label codeBox = new Label();
             codeBox.BackColor = Ui.Card;
             codeBox.ForeColor = Ui.Green;
             codeBox.BorderStyle = BorderStyle.FixedSingle;
             codeBox.Font = Ui.F(20, true);
-            codeBox.TextAlign = HorizontalAlignment.Center;
+            codeBox.TextAlign = ContentAlignment.MiddleCenter;
             codeBox.Text = transferCode;
-            codeBox.SetBounds(80, 242, 310, 45);
+            codeBox.SetBounds(80, 242, 310, 50);
             f.Controls.Add(codeBox);
+            f.Shown += (s, e) => { codeBox.Text = transferCode; codeBox.Refresh(); };
 
             Button copy = Ui.Btn(f, Ui.Card, 10, 135, 300, 200, 42);
             copy.Text = Lang.Get("copyCode");
             copy.Enabled = true;
-            copy.Click += (s, e) => { if (codeBox.Text.Length > 0) Clipboard.SetText(codeBox.Text); };
+            copy.Click += (s, e) => { Clipboard.SetText(transferCode); };
 
             export.Click += (s, e) =>
             {
