@@ -68,7 +68,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.1";
+    public const string CurrentVersion = "3.2.2";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -500,7 +500,7 @@ class MainForm : Form
 
         // --- Colonna destra: account ---
         accTitle = Ui.Lbl(this, "", 11, true, Ui.White, 400, 128, 620, 25, ContentAlignment.MiddleLeft);
-        btnToggleList = Ui.Btn(this, Ui.Card, 9.5f, 800, 10, 170, 36);
+        btnToggleList = Ui.Btn(this, Ui.Card, 9.5f, 10, 10, 180, 36);
         linkLabel = Ui.Lbl(this, "", 9, false, Ui.Gray, 400, 155, 770, 20, ContentAlignment.MiddleLeft);
 
         linkBox = new TextBox();
@@ -871,8 +871,8 @@ class MainForm : Form
         ClientSize = new Size(accountListVisible ? 1200 : 400, accountListVisible ? 750 : 650);
         title.Width = ClientSize.Width;
         sub.Width = ClientSize.Width;
-        combo.Left = accountListVisible ? 1030 : 10;
-        btnToggleList.Left = accountListVisible ? 850 : 210;
+        combo.Left = accountListVisible ? 1030 : 220;
+        btnToggleList.Left = 10;
         btnToggleList.Top = 10;
         accTitle.Visible = accountListVisible;
         linkLabel.Visible = accountListVisible;
