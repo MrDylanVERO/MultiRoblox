@@ -40,8 +40,11 @@ class Account
     public long RobloxUserId;
     public bool LoggedIn;
     public bool Favorite;
+    public bool Hidden;
     public string Group = "";
     public bool Selected;
+
+    public override string ToString() { return Name ?? ""; }
 
     public string ProfileDir
     {
@@ -68,7 +71,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.2";
+    public const string CurrentVersion = "3.2.3";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -118,6 +121,7 @@ class BackupAccount
     public long RobloxUserId;
     public bool LoggedIn;
     public bool Favorite;
+    public bool Hidden;
     public string Group;
 }
 class BackupModel
@@ -247,6 +251,8 @@ static class Accounts
                 bool favorite;
                 if (fields.Length > 4 && bool.TryParse(fields[4], out favorite)) a.Favorite = favorite;
                 if (fields.Length > 5) a.Group = fields[5];
+                bool hidden;
+                if (fields.Length > 6 && bool.TryParse(fields[6], out hidden)) a.Hidden = hidden;
                 list.Add(a);
             }
         }
@@ -260,7 +266,7 @@ static class Accounts
         {
             Directory.CreateDirectory(Paths.DataDir);
             List<string> lines = new List<string>();
-            foreach (Account a in list) lines.Add(a.Id + "|" + a.Name + "|" + a.RobloxUserId + "|" + a.LoggedIn + "|" + a.Favorite + "|" + (a.Group ?? "").Replace("|", " "));
+            foreach (Account a in list) lines.Add(a.Id + "|" + a.Name + "|" + a.RobloxUserId + "|" + a.LoggedIn + "|" + a.Favorite + "|" + (a.Group ?? "").Replace("|", " ") + "|" + a.Hidden);
             File.WriteAllLines(FilePath, lines.ToArray(), Encoding.UTF8);
         }
         catch { }
@@ -642,7 +648,7 @@ class MainForm : Form
     {
         using (Form f = new Form())
         {
-            Ui.SetupForm(f, 430, 465);
+            Ui.SetupForm(f, 430, 530);
             f.Text = Lang.Get("settings").Replace("⚙ ", "");
             f.StartPosition = FormStartPosition.CenterParent;
             f.ShowInTaskbar = false;
@@ -684,7 +690,11 @@ class MainForm : Form
             transfer.Text = Lang.Get("transferPc");
             transfer.Click += (s, e) => ShowTransfer(f);
 
-            Button save = Ui.Btn(f, Ui.Blue, 11, 105, 372, 220, 48);
+            Button hiddenAccounts = Ui.Btn(f, Ui.Card, 10, 30, 334, 370, 42);
+            hiddenAccounts.Text = Lang.Get("hiddenAccounts");
+            hiddenAccounts.Click += (s, e) => ShowHiddenAccounts(f);
+
+            Button save = Ui.Btn(f, Ui.Blue, 11, 105, 438, 220, 48);
             save.Text = Lang.Get("save");
             save.DialogResult = DialogResult.OK;
             f.AcceptButton = save;
@@ -709,6 +719,32 @@ class MainForm : Form
         }
         ApplyAccountListVisibility();
         UpdateTexts();
+    }
+
+    void ShowHiddenAccounts(IWin32Window owner)
+    {
+        using (Form f = new Form())
+        {
+            Ui.SetupForm(f, 430, 410);
+            f.Text = Lang.Get("hiddenAccounts");
+            f.StartPosition = FormStartPosition.CenterParent;
+            f.ShowInTaskbar = false;
+            ListBox list = new ListBox();
+            list.BackColor = Ui.Card; list.ForeColor = Ui.White; list.Font = Ui.F(11, false);
+            list.SetBounds(30, 30, 370, 270);
+            foreach (Account a in accounts) if (a.Hidden) list.Items.Add(a);
+            list.DisplayMember = "Name";
+            f.Controls.Add(list);
+            Button show = Ui.Btn(f, Ui.Green, 10, 30, 320, 370, 46);
+            show.Text = Lang.Get("showAccount");
+            show.Click += (s, e) =>
+            {
+                Account a = list.SelectedItem as Account;
+                if (a == null) return;
+                a.Hidden = false; Accounts.Save(accounts); list.Items.Remove(a); BuildList();
+            };
+            f.ShowDialog(owner);
+        }
     }
 
     void ShowTransfer(IWin32Window owner)
@@ -738,7 +774,7 @@ class MainForm : Form
     {
         BackupModel data = new BackupModel { Link = linkBox.Text.Trim(), Theme = Themes.Current, Language = Lang.Current };
         foreach (Account a in accounts)
-            data.Accounts.Add(new BackupAccount { Id = a.Id, Name = a.Name, RobloxUserId = a.RobloxUserId, LoggedIn = a.LoggedIn, Favorite = a.Favorite, Group = a.Group });
+            data.Accounts.Add(new BackupAccount { Id = a.Id, Name = a.Name, RobloxUserId = a.RobloxUserId, LoggedIn = a.LoggedIn, Favorite = a.Favorite, Hidden = a.Hidden, Group = a.Group });
         return data;
     }
 
@@ -771,7 +807,7 @@ class MainForm : Form
                 if (data == null || data.Accounts == null) throw new InvalidDataException();
                 accounts.Clear();
                 foreach (BackupAccount b in data.Accounts)
-                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = false, Favorite = b.Favorite, Group = b.Group ?? "" });
+                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = false, Favorite = b.Favorite, Hidden = b.Hidden, Group = b.Group ?? "" });
                 Accounts.Save(accounts);
                 if (data.Link != null) { linkBox.Text = data.Link; Accounts.SaveLink(data.Link); }
                 if (!string.IsNullOrEmpty(data.Language) && Array.IndexOf(Lang.Codes, data.Language) >= 0) { Lang.Current = data.Language; Lang.Save(); }
@@ -818,7 +854,7 @@ class MainForm : Form
                 if (data == null || data.Accounts == null) throw new InvalidDataException();
                 accounts.Clear();
                 foreach (BackupAccount b in data.Accounts)
-                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = transferredFromAnotherPc ? false : b.LoggedIn, Favorite = b.Favorite, Group = b.Group ?? "" });
+                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = transferredFromAnotherPc ? false : b.LoggedIn, Favorite = b.Favorite, Hidden = b.Hidden, Group = b.Group ?? "" });
                 Accounts.Save(accounts);
                 if (data.Link != null) { linkBox.Text = data.Link; Accounts.SaveLink(data.Link); }
                 if (!string.IsNullOrEmpty(data.Language) && Array.IndexOf(Lang.Codes, data.Language) >= 0) { Lang.Current = data.Language; Lang.Save(); }
@@ -900,6 +936,7 @@ class MainForm : Form
         List<Account> visibleAccounts = new List<Account>();
         foreach (Account a in accounts)
         {
+            if (a.Hidden) continue;
             bool matchesText = query.Length == 0 || a.Name.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0 || (a.Group ?? "").IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
             bool matchesGroup = selectedGroup.Length == 0 || string.Equals(a.Group ?? "", selectedGroup, StringComparison.OrdinalIgnoreCase);
             if (matchesText && matchesGroup) visibleAccounts.Add(a);
@@ -938,6 +975,14 @@ class MainForm : Form
 
             Label name = Ui.Lbl(row, acc.Name, 10.5f, true, Ui.White, 70, 0, w - 365, 27, ContentAlignment.MiddleLeft);
             name.AutoEllipsis = true;
+
+            ContextMenuStrip menu = new ContextMenuStrip();
+            ToolStripMenuItem hideAccount = new ToolStripMenuItem(Lang.Get("hideAccount"));
+            hideAccount.Click += (s, e) => { acc.Hidden = true; acc.Selected = false; Accounts.Save(accounts); BuildList(); };
+            menu.Items.Add(hideAccount);
+            row.ContextMenuStrip = menu;
+            name.ContextMenuStrip = menu;
+            avatar.ContextMenuStrip = menu;
 
             Button group = Ui.Btn(row, Ui.Card, 7.5f, 70, 27, Math.Max(100, w - 365), 18);
             group.Text = string.IsNullOrEmpty(acc.Group) ? Lang.Get("noGroup") : acc.Group;
