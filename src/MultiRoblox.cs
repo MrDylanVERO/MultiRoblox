@@ -67,7 +67,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.1.0";
+    public const string CurrentVersion = "3.2.0";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -586,7 +586,7 @@ class MainForm : Form
     {
         using (Form f = new Form())
         {
-            Ui.SetupForm(f, 430, 405);
+            Ui.SetupForm(f, 430, 465);
             f.Text = Lang.Get("settings").Replace("⚙ ", "");
             f.StartPosition = FormStartPosition.CenterParent;
             f.ShowInTaskbar = false;
@@ -624,7 +624,11 @@ class MainForm : Form
             updates.Text = Lang.Get("updates");
             updates.Click += (s, e) => UpdateChecker.Check(this, false);
 
-            Button save = Ui.Btn(f, Ui.Blue, 11, 105, 310, 220, 48);
+            Button transfer = Ui.Btn(f, Ui.Card, 10, 30, 282, 370, 42);
+            transfer.Text = Lang.Get("transferPc");
+            transfer.Click += (s, e) => ShowTransfer(f);
+
+            Button save = Ui.Btn(f, Ui.Blue, 11, 105, 372, 220, 48);
             save.Text = Lang.Get("save");
             save.DialogResult = DialogResult.OK;
             f.AcceptButton = save;
@@ -651,6 +655,29 @@ class MainForm : Form
         UpdateTexts();
     }
 
+    void ShowTransfer(IWin32Window owner)
+    {
+        using (Form f = new Form())
+        {
+            Ui.SetupForm(f, 470, 300);
+            f.Text = Lang.Get("transferPc");
+            f.StartPosition = FormStartPosition.CenterParent;
+            f.ShowInTaskbar = false;
+            f.MinimizeBox = false;
+            Ui.Lbl(f, Lang.Get("transferInfo"), 10, false, Ui.White, 30, 25, 410, 105, ContentAlignment.MiddleLeft);
+            Button export = Ui.Btn(f, Ui.Blue, 10, 30, 155, 195, 48);
+            export.Text = Lang.Get("exportTransfer");
+            export.Click += (s, e) => BackupData(f);
+            Button import = Ui.Btn(f, Ui.Green, 10, 245, 155, 195, 48);
+            import.Text = Lang.Get("importTransfer");
+            import.Click += (s, e) => { if (RestoreData(f, true)) f.Close(); };
+            Button close = Ui.Btn(f, Ui.Card, 10, 135, 220, 200, 42);
+            close.Text = Lang.Get("cancel");
+            close.Click += (s, e) => f.Close();
+            f.ShowDialog(owner);
+        }
+    }
+
     void BackupData(IWin32Window owner)
     {
         using (SaveFileDialog dialog = new SaveFileDialog())
@@ -672,30 +699,67 @@ class MainForm : Form
 
     void RestoreData(IWin32Window owner)
     {
+        RestoreData(owner, false);
+    }
+
+    bool RestoreData(IWin32Window owner, bool transferredFromAnotherPc)
+    {
         using (OpenFileDialog dialog = new OpenFileDialog())
         {
             dialog.Filter = "MultiRoblox Backup (*.mrbbackup)|*.mrbbackup";
-            if (dialog.ShowDialog(owner) != DialogResult.OK) return;
+            if (dialog.ShowDialog(owner) != DialogResult.OK) return false;
             try
             {
                 BackupModel data = new JavaScriptSerializer().Deserialize<BackupModel>(File.ReadAllText(dialog.FileName, Encoding.UTF8));
                 if (data == null || data.Accounts == null) throw new InvalidDataException();
                 accounts.Clear();
                 foreach (BackupAccount b in data.Accounts)
-                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = b.LoggedIn, Favorite = b.Favorite, Group = b.Group ?? "" });
+                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = transferredFromAnotherPc ? false : b.LoggedIn, Favorite = b.Favorite, Group = b.Group ?? "" });
                 Accounts.Save(accounts);
                 if (data.Link != null) { linkBox.Text = data.Link; Accounts.SaveLink(data.Link); }
                 if (!string.IsNullOrEmpty(data.Language) && Array.IndexOf(Lang.Codes, data.Language) >= 0) { Lang.Current = data.Language; Lang.Save(); }
                 if (!string.IsNullOrEmpty(data.Theme) && Array.IndexOf(Themes.Names, data.Theme) >= 0) Themes.Save(data.Theme);
                 RefreshGroupFilter();
                 BuildList();
-                MessageBox.Show(this, "Backup ripristinato.", "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (transferredFromAnotherPc)
+                {
+                    MessageBox.Show(this, Lang.Get("transferImported"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    StartReloginWizard();
+                }
+                else
+                    MessageBox.Show(this, "Backup ripristinato.", "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return true;
             }
             catch
             {
                 MessageBox.Show(this, Lang.Get("fail") + "backup non valido", "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
         }
+    }
+
+    void StartReloginWizard()
+    {
+        foreach (Account a in accounts)
+        {
+            string prompt = string.Format(Lang.Get("transferLoginPrompt"), a.Name);
+            DialogResult answer = MessageBox.Show(this, prompt, "Multi Roblox", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+            if (answer == DialogResult.Cancel) break;
+            if (answer == DialogResult.No) continue;
+            try
+            {
+                if (!Accounts.Open(a, "https://www.roblox.com/login"))
+                {
+                    MessageBox.Show(this, Lang.Get("noBrowser"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    break;
+                }
+                if (MessageBox.Show(this, Lang.Get("loginDone"), "Multi Roblox", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    a.LoggedIn = true;
+            }
+            catch { }
+        }
+        Accounts.Save(accounts);
+        BuildList();
     }
 
     void ApplyAccountListVisibility()
