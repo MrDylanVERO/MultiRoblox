@@ -71,7 +71,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.5";
+    public const string CurrentVersion = "3.2.6";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -751,6 +751,7 @@ class MainForm : Form
     {
         using (Form f = new Form())
         {
+            string transferCode = TransferCrypto.NewCode();
             Ui.SetupForm(f, 470, 440);
             f.Text = Lang.Get("transferPc");
             f.StartPosition = FormStartPosition.CenterParent;
@@ -771,22 +772,19 @@ class MainForm : Form
             codeBox.BorderStyle = BorderStyle.FixedSingle;
             codeBox.Font = Ui.F(20, true);
             codeBox.TextAlign = HorizontalAlignment.Center;
+            codeBox.Text = transferCode;
             codeBox.SetBounds(80, 242, 310, 45);
             f.Controls.Add(codeBox);
 
             Button copy = Ui.Btn(f, Ui.Card, 10, 135, 300, 200, 42);
             copy.Text = Lang.Get("copyCode");
-            copy.Enabled = false;
+            copy.Enabled = true;
             copy.Click += (s, e) => { if (codeBox.Text.Length > 0) Clipboard.SetText(codeBox.Text); };
 
             export.Click += (s, e) =>
             {
-                string code = ExportTransfer(f);
-                if (string.IsNullOrEmpty(code)) return;
-                codeBox.Text = code;
-                copy.Enabled = true;
-                codeBox.Focus();
-                codeBox.SelectAll();
+                if (ExportTransfer(f, transferCode))
+                    MessageBox.Show(f, Lang.Get("transferFileCreated"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
             };
 
             Button close = Ui.Btn(f, Ui.Card, 10, 135, 360, 200, 42);
@@ -809,23 +807,22 @@ class MainForm : Form
         return data;
     }
 
-    string ExportTransfer(IWin32Window owner)
+    bool ExportTransfer(IWin32Window owner, string code)
     {
         List<Account> selected = accounts.FindAll(a => a.Selected);
         if (selected.Count == 0)
         {
             MessageBox.Show(owner, Lang.Get("selectTransferAccounts"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return null;
+            return false;
         }
         using (SaveFileDialog dialog = new SaveFileDialog())
         {
             dialog.Filter = "MultiRoblox Transfer (*.mrbtransfer)|*.mrbtransfer";
             dialog.FileName = "MultiRoblox-trasferimento-" + DateTime.Now.ToString("yyyy-MM-dd") + ".mrbtransfer";
-            if (dialog.ShowDialog(owner) != DialogResult.OK) return null;
-            string code = TransferCrypto.NewCode();
+            if (dialog.ShowDialog(owner) != DialogResult.OK) return false;
             string json = new JavaScriptSerializer().Serialize(CreateBackupModel(selected));
             File.WriteAllBytes(dialog.FileName, TransferCrypto.Encrypt(json, code));
-            return code;
+            return true;
         }
     }
 
