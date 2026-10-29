@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -67,7 +68,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.0";
+    public const string CurrentVersion = "3.2.1";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -126,6 +127,61 @@ class BackupModel
     public string Theme;
     public string Language;
     public List<BackupAccount> Accounts = new List<BackupAccount>();
+}
+
+static class TransferCrypto
+{
+    public static string NewCode()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        byte[] random = new byte[8];
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) rng.GetBytes(random);
+        StringBuilder code = new StringBuilder(9);
+        for (int i = 0; i < random.Length; i++)
+        {
+            if (i == 4) code.Append('-');
+            code.Append(chars[random[i] % chars.Length]);
+        }
+        return code.ToString();
+    }
+
+    public static byte[] Encrypt(string text, string code)
+    {
+        byte[] salt = new byte[16], iv = new byte[16];
+        using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) { rng.GetBytes(salt); rng.GetBytes(iv); }
+        byte[] keys;
+        using (Rfc2898DeriveBytes kdf = new Rfc2898DeriveBytes(code, salt, 100000)) keys = kdf.GetBytes(64);
+        byte[] cipher;
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = Sub(keys, 0, 32); aes.IV = iv; aes.Mode = CipherMode.CBC; aes.Padding = PaddingMode.PKCS7;
+            using (ICryptoTransform enc = aes.CreateEncryptor()) cipher = enc.TransformFinalBlock(Encoding.UTF8.GetBytes(text), 0, Encoding.UTF8.GetByteCount(text));
+        }
+        byte[] body = Join(Encoding.ASCII.GetBytes("MRBT1"), salt, iv, cipher);
+        byte[] mac;
+        using (HMACSHA256 h = new HMACSHA256(Sub(keys, 32, 32))) mac = h.ComputeHash(body);
+        return Join(body, mac);
+    }
+
+    public static string Decrypt(byte[] file, string code)
+    {
+        if (file == null || file.Length < 69 || Encoding.ASCII.GetString(file, 0, 5) != "MRBT1") throw new InvalidDataException();
+        byte[] salt = Sub(file, 5, 16), iv = Sub(file, 21, 16);
+        byte[] cipher = Sub(file, 37, file.Length - 69), savedMac = Sub(file, file.Length - 32, 32), keys;
+        using (Rfc2898DeriveBytes kdf = new Rfc2898DeriveBytes(code, salt, 100000)) keys = kdf.GetBytes(64);
+        byte[] body = Sub(file, 0, file.Length - 32), actualMac;
+        using (HMACSHA256 h = new HMACSHA256(Sub(keys, 32, 32))) actualMac = h.ComputeHash(body);
+        int difference = 0; for (int i = 0; i < 32; i++) difference |= actualMac[i] ^ savedMac[i];
+        if (difference != 0) throw new CryptographicException();
+        using (Aes aes = Aes.Create())
+        {
+            aes.Key = Sub(keys, 0, 32); aes.IV = iv; aes.Mode = CipherMode.CBC; aes.Padding = PaddingMode.PKCS7;
+            using (ICryptoTransform dec = aes.CreateDecryptor()) return Encoding.UTF8.GetString(dec.TransformFinalBlock(cipher, 0, cipher.Length));
+        }
+    }
+
+    static byte[] Sub(byte[] value, int start, int count) { byte[] r = new byte[count]; Buffer.BlockCopy(value, start, r, 0, count); return r; }
+    static byte[] Join(params byte[][] parts) { int len = 0, pos = 0; foreach (byte[] p in parts) len += p.Length; byte[] r = new byte[len]; foreach (byte[] p in parts) { Buffer.BlockCopy(p, 0, r, pos, p.Length); pos += p.Length; } return r; }
 }
 
 static class RobloxProfile
@@ -667,14 +723,69 @@ class MainForm : Form
             Ui.Lbl(f, Lang.Get("transferInfo"), 10, false, Ui.White, 30, 25, 410, 105, ContentAlignment.MiddleLeft);
             Button export = Ui.Btn(f, Ui.Blue, 10, 30, 155, 195, 48);
             export.Text = Lang.Get("exportTransfer");
-            export.Click += (s, e) => BackupData(f);
+            export.Click += (s, e) => ExportTransfer(f);
             Button import = Ui.Btn(f, Ui.Green, 10, 245, 155, 195, 48);
             import.Text = Lang.Get("importTransfer");
-            import.Click += (s, e) => { if (RestoreData(f, true)) f.Close(); };
+            import.Click += (s, e) => { if (ImportTransfer(f)) f.Close(); };
             Button close = Ui.Btn(f, Ui.Card, 10, 135, 220, 200, 42);
             close.Text = Lang.Get("cancel");
             close.Click += (s, e) => f.Close();
             f.ShowDialog(owner);
+        }
+    }
+
+    BackupModel CreateBackupModel()
+    {
+        BackupModel data = new BackupModel { Link = linkBox.Text.Trim(), Theme = Themes.Current, Language = Lang.Current };
+        foreach (Account a in accounts)
+            data.Accounts.Add(new BackupAccount { Id = a.Id, Name = a.Name, RobloxUserId = a.RobloxUserId, LoggedIn = a.LoggedIn, Favorite = a.Favorite, Group = a.Group });
+        return data;
+    }
+
+    void ExportTransfer(IWin32Window owner)
+    {
+        using (SaveFileDialog dialog = new SaveFileDialog())
+        {
+            dialog.Filter = "MultiRoblox Transfer (*.mrbtransfer)|*.mrbtransfer";
+            dialog.FileName = "MultiRoblox-trasferimento-" + DateTime.Now.ToString("yyyy-MM-dd") + ".mrbtransfer";
+            if (dialog.ShowDialog(owner) != DialogResult.OK) return;
+            string code = TransferCrypto.NewCode();
+            string json = new JavaScriptSerializer().Serialize(CreateBackupModel());
+            File.WriteAllBytes(dialog.FileName, TransferCrypto.Encrypt(json, code));
+            MessageBox.Show(owner, string.Format(Lang.Get("transferCodeShown"), code), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    bool ImportTransfer(IWin32Window owner)
+    {
+        using (OpenFileDialog dialog = new OpenFileDialog())
+        {
+            dialog.Filter = "MultiRoblox Transfer (*.mrbtransfer)|*.mrbtransfer";
+            if (dialog.ShowDialog(owner) != DialogResult.OK) return false;
+            string code = InputBox.Ask(owner, Lang.Get("transferEnterCode"));
+            if (code == null) return false;
+            try
+            {
+                string json = TransferCrypto.Decrypt(File.ReadAllBytes(dialog.FileName), code.Trim().ToUpperInvariant());
+                BackupModel data = new JavaScriptSerializer().Deserialize<BackupModel>(json);
+                if (data == null || data.Accounts == null) throw new InvalidDataException();
+                accounts.Clear();
+                foreach (BackupAccount b in data.Accounts)
+                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = false, Favorite = b.Favorite, Group = b.Group ?? "" });
+                Accounts.Save(accounts);
+                if (data.Link != null) { linkBox.Text = data.Link; Accounts.SaveLink(data.Link); }
+                if (!string.IsNullOrEmpty(data.Language) && Array.IndexOf(Lang.Codes, data.Language) >= 0) { Lang.Current = data.Language; Lang.Save(); }
+                if (!string.IsNullOrEmpty(data.Theme) && Array.IndexOf(Themes.Names, data.Theme) >= 0) Themes.Save(data.Theme);
+                RefreshGroupFilter(); BuildList();
+                MessageBox.Show(this, Lang.Get("transferImported"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                StartReloginWizard();
+                return true;
+            }
+            catch
+            {
+                MessageBox.Show(this, Lang.Get("transferWrongCode"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
         }
     }
 
@@ -685,14 +796,7 @@ class MainForm : Form
             dialog.Filter = "MultiRoblox Backup (*.mrbbackup)|*.mrbbackup";
             dialog.FileName = "MultiRoblox-backup-" + DateTime.Now.ToString("yyyy-MM-dd") + ".mrbbackup";
             if (dialog.ShowDialog(owner) != DialogResult.OK) return;
-            BackupModel data = new BackupModel();
-            data.Link = linkBox.Text.Trim();
-            data.Theme = Themes.Current;
-            data.Language = Lang.Current;
-            foreach (Account a in accounts)
-            {
-                data.Accounts.Add(new BackupAccount { Id = a.Id, Name = a.Name, RobloxUserId = a.RobloxUserId, LoggedIn = a.LoggedIn, Favorite = a.Favorite, Group = a.Group });
-            }
+            BackupModel data = CreateBackupModel();
             File.WriteAllText(dialog.FileName, new JavaScriptSerializer().Serialize(data), Encoding.UTF8);
         }
     }

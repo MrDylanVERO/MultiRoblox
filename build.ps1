@@ -9,7 +9,7 @@ if (-not (Test-Path -LiteralPath $csc)) {
 }
 if (-not (Test-Path -LiteralPath $csc)) { throw 'Compilatore C# non trovato.' }
 
-$app = Join-Path $dist 'MultiRoblox-v3.2.0.exe'
+$app = Join-Path $dist 'MultiRoblox-v3.2.1.exe'
 & $csc /nologo /codepage:65001 /target:winexe /optimize+ `
     "/win32icon:$root\assets\MultiRoblox.ico" `
     "/resource:$root\assets\MultiRoblox.ico,icon.ico" `
