@@ -71,7 +71,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.3";
+    public const string CurrentVersion = "3.2.4";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -772,21 +772,32 @@ class MainForm : Form
 
     BackupModel CreateBackupModel()
     {
+        return CreateBackupModel(accounts);
+    }
+
+    BackupModel CreateBackupModel(IEnumerable<Account> accountsToExport)
+    {
         BackupModel data = new BackupModel { Link = linkBox.Text.Trim(), Theme = Themes.Current, Language = Lang.Current };
-        foreach (Account a in accounts)
+        foreach (Account a in accountsToExport)
             data.Accounts.Add(new BackupAccount { Id = a.Id, Name = a.Name, RobloxUserId = a.RobloxUserId, LoggedIn = a.LoggedIn, Favorite = a.Favorite, Hidden = a.Hidden, Group = a.Group });
         return data;
     }
 
     void ExportTransfer(IWin32Window owner)
     {
+        List<Account> selected = accounts.FindAll(a => a.Selected);
+        if (selected.Count == 0)
+        {
+            MessageBox.Show(owner, Lang.Get("selectTransferAccounts"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
         using (SaveFileDialog dialog = new SaveFileDialog())
         {
             dialog.Filter = "MultiRoblox Transfer (*.mrbtransfer)|*.mrbtransfer";
             dialog.FileName = "MultiRoblox-trasferimento-" + DateTime.Now.ToString("yyyy-MM-dd") + ".mrbtransfer";
             if (dialog.ShowDialog(owner) != DialogResult.OK) return;
             string code = TransferCrypto.NewCode();
-            string json = new JavaScriptSerializer().Serialize(CreateBackupModel());
+            string json = new JavaScriptSerializer().Serialize(CreateBackupModel(selected));
             File.WriteAllBytes(dialog.FileName, TransferCrypto.Encrypt(json, code));
             MessageBox.Show(owner, string.Format(Lang.Get("transferCodeShown"), code), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -805,9 +816,16 @@ class MainForm : Form
                 string json = TransferCrypto.Decrypt(File.ReadAllBytes(dialog.FileName), code.Trim().ToUpperInvariant());
                 BackupModel data = new JavaScriptSerializer().Deserialize<BackupModel>(json);
                 if (data == null || data.Accounts == null) throw new InvalidDataException();
-                accounts.Clear();
                 foreach (BackupAccount b in data.Accounts)
-                    accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = false, Favorite = b.Favorite, Hidden = b.Hidden, Group = b.Group ?? "" });
+                {
+                    Account existing = accounts.Find(a => a.RobloxUserId != 0 && a.RobloxUserId == b.RobloxUserId);
+                    if (existing == null)
+                        accounts.Add(new Account { Id = b.Id, Name = b.Name, RobloxUserId = b.RobloxUserId, LoggedIn = false, Favorite = b.Favorite, Hidden = b.Hidden, Group = b.Group ?? "" });
+                    else
+                    {
+                        existing.Name = b.Name; existing.Favorite = b.Favorite; existing.Hidden = b.Hidden; existing.Group = b.Group ?? "";
+                    }
+                }
                 Accounts.Save(accounts);
                 if (data.Link != null) { linkBox.Text = data.Link; Accounts.SaveLink(data.Link); }
                 if (!string.IsNullOrEmpty(data.Language) && Array.IndexOf(Lang.Codes, data.Language) >= 0) { Lang.Current = data.Language; Lang.Save(); }

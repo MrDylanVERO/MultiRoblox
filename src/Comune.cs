@@ -93,6 +93,7 @@ static class Lang
         { "hideAccount", new[] { "Nascondi account", "Konto ausblenden", "Hide account", "Masquer le compte", "Ocultar cuenta" } },
         { "hiddenAccounts", new[] { "Account nascosti", "Ausgeblendete Konten", "Hidden accounts", "Comptes masqués", "Cuentas ocultas" } },
         { "showAccount", new[] { "MOSTRA ACCOUNT SELEZIONATO", "AUSGEWÄHLTES KONTO ANZEIGEN", "SHOW SELECTED ACCOUNT", "AFFICHER LE COMPTE SÉLECTIONNÉ", "MOSTRAR CUENTA SELECCIONADA" } },
+        { "selectTransferAccounts", new[] { "Seleziona con la casella gli account da trasferire.", "Wähle die zu übertragenden Konten mit dem Kästchen aus.", "Select the accounts to transfer using their checkboxes.", "Sélectionne avec la case les comptes à transférer.", "Selecciona con la casilla las cuentas que quieres transferir." } },
         { "noUpdates", new[] { "Hai già la versione più recente.", "Du hast bereits die neueste Version.", "You already have the latest version.", "Tu as déjà la dernière version.", "Ya tienes la versión más reciente." } },
         { "updateAvailable", new[] { "È disponibile la versione {0}.\r\n\r\n{1}\r\n\r\nVuoi aprire la pagina di download?", "Version {0} ist verfügbar.\r\n\r\n{1}\r\n\r\nDownload-Seite öffnen?", "Version {0} is available.\r\n\r\n{1}\r\n\r\nOpen the download page?", "La version {0} est disponible.\r\n\r\n{1}\r\n\r\nOuvrir la page de téléchargement ?", "La versión {0} está disponible.\r\n\r\n{1}\r\n\r\n¿Abrir la página de descarga?" } },
         { "cancel", new[] { "Annulla", "Abbrechen", "Cancel", "Annuler", "Cancelar" } },
