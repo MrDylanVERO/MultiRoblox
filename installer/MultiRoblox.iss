@@ -1,5 +1,5 @@
 #define MyAppName "MultiRoblox"
-#define MyAppVersion "3.2.4"
+#define MyAppVersion "3.2.5"
 #define MyAppPublisher "MultiRoblox"
 #define MyAppExeName "MultiRoblox.exe"
 #define RootDir SourcePath + ".."
@@ -14,7 +14,7 @@ DefaultGroupName=MultiRoblox
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 OutputDir={#RootDir}\dist
-OutputBaseFilename=MultiRoblox-Installer-v3.2.4
+OutputBaseFilename=MultiRoblox-Installer-v3.2.5
 SetupIconFile={#RootDir}\assets\MultiRoblox.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
@@ -50,7 +50,7 @@ spanish.ExtraLinks=Accesos directos adicionales:
 Name: "desktopicon"; Description: "{cm:DesktopIcon}"; GroupDescription: "{cm:ExtraLinks}"; Flags: unchecked
 
 [Files]
-Source: "{#RootDir}\dist\MultiRoblox-v3.2.4.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
+Source: "{#RootDir}\dist\MultiRoblox-v3.2.5.exe"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\MultiRoblox"; Filename: "{app}\{#MyAppExeName}"

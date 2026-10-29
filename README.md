@@ -35,7 +35,7 @@ I file compilati vengono creati in `dist/`.
 
 ## Aggiornamenti
 
-Il programma controlla la Release più recente di `MrDylanVERO/MultiRoblox`. Pubblicare nuove versioni con tag nel formato `v3.2.4`.
+Il programma controlla la Release più recente di `MrDylanVERO/MultiRoblox`. Pubblicare nuove versioni con tag nel formato `v3.2.5`.
 
 ## Nota
 
