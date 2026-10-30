@@ -71,7 +71,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.7";
+    public const string CurrentVersion = "3.2.8";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -151,6 +151,7 @@ static class TransferCrypto
 
     public static byte[] Encrypt(string text, string code)
     {
+        code = CleanCode(code);
         byte[] salt = new byte[16], iv = new byte[16];
         using (RandomNumberGenerator rng = RandomNumberGenerator.Create()) { rng.GetBytes(salt); rng.GetBytes(iv); }
         byte[] keys;
@@ -169,6 +170,21 @@ static class TransferCrypto
 
     public static string Decrypt(byte[] file, string code)
     {
+        string exact = (code ?? "").Trim().ToUpperInvariant();
+        string clean = CleanCode(exact);
+        string formatted = clean.Length == 8 ? clean.Substring(0, 4) + "-" + clean.Substring(4) : clean;
+        Exception last = null;
+        foreach (string candidate in new[] { exact, clean, formatted })
+        {
+            if (string.IsNullOrEmpty(candidate)) continue;
+            try { return DecryptWithCode(file, candidate); }
+            catch (Exception ex) { last = ex; }
+        }
+        throw last ?? new CryptographicException();
+    }
+
+    static string DecryptWithCode(byte[] file, string code)
+    {
         if (file == null || file.Length < 69 || Encoding.ASCII.GetString(file, 0, 5) != "MRBT1") throw new InvalidDataException();
         byte[] salt = Sub(file, 5, 16), iv = Sub(file, 21, 16);
         byte[] cipher = Sub(file, 37, file.Length - 69), savedMac = Sub(file, file.Length - 32, 32), keys;
@@ -186,6 +202,7 @@ static class TransferCrypto
 
     static byte[] Sub(byte[] value, int start, int count) { byte[] r = new byte[count]; Buffer.BlockCopy(value, start, r, 0, count); return r; }
     static byte[] Join(params byte[][] parts) { int len = 0, pos = 0; foreach (byte[] p in parts) len += p.Length; byte[] r = new byte[len]; foreach (byte[] p in parts) { Buffer.BlockCopy(p, 0, r, pos, p.Length); pos += p.Length; } return r; }
+    static string CleanCode(string code) { StringBuilder b = new StringBuilder(); foreach (char c in (code ?? "").ToUpperInvariant()) if (char.IsLetterOrDigit(c)) b.Append(c); return b.ToString(); }
 }
 
 static class RobloxProfile
@@ -751,7 +768,7 @@ class MainForm : Form
     {
         using (Form f = new Form())
         {
-            string transferCode = TransferCrypto.NewCode();
+            string transferCode = null;
             Ui.SetupForm(f, 470, 440);
             f.Text = Lang.Get("transferPc") + " - v" + UpdateChecker.CurrentVersion;
             f.StartPosition = FormStartPosition.CenterParent;
@@ -771,20 +788,26 @@ class MainForm : Form
             codeBox.BorderStyle = BorderStyle.FixedSingle;
             codeBox.Font = Ui.F(20, true);
             codeBox.TextAlign = ContentAlignment.MiddleCenter;
-            codeBox.Text = transferCode;
+            codeBox.Text = Lang.Get("pressExportForCode");
             codeBox.SetBounds(80, 242, 310, 50);
             f.Controls.Add(codeBox);
-            f.Shown += (s, e) => { codeBox.Text = transferCode; codeBox.Refresh(); };
 
             Button copy = Ui.Btn(f, Ui.Card, 10, 135, 300, 200, 42);
             copy.Text = Lang.Get("copyCode");
-            copy.Enabled = true;
-            copy.Click += (s, e) => { Clipboard.SetText(transferCode); };
+            copy.Enabled = false;
+            copy.Click += (s, e) => { if (!string.IsNullOrEmpty(transferCode)) Clipboard.SetText(transferCode); };
 
             export.Click += (s, e) =>
             {
-                if (ExportTransfer(f, transferCode))
+                string newCode = TransferCrypto.NewCode();
+                if (ExportTransfer(f, newCode))
+                {
+                    transferCode = newCode;
+                    codeBox.Text = transferCode;
+                    codeBox.Refresh();
+                    copy.Enabled = true;
                     MessageBox.Show(f, Lang.Get("transferFileCreated"), "Multi Roblox", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             };
 
             Button close = Ui.Btn(f, Ui.Card, 10, 135, 360, 200, 42);
@@ -832,7 +855,7 @@ class MainForm : Form
         {
             dialog.Filter = "MultiRoblox Transfer (*.mrbtransfer)|*.mrbtransfer";
             if (dialog.ShowDialog(owner) != DialogResult.OK) return false;
-            string code = InputBox.Ask(owner, Lang.Get("transferEnterCode"));
+            string code = InputBox.Ask(owner, Lang.Get("transferEnterOldCode"));
             if (code == null) return false;
             try
             {
