@@ -8,7 +8,6 @@ MultiRoblox è un account manager desktop per organizzare e aprire più profili 
 - Ricerca, preferiti, gruppi e ordinamento
 - Selezione e avvio di più account
 - Temi e interfaccia multilingua
-- Trasferimento cifrato con codice degli account selezionati, senza password o cookie
 - Account nascondibili con il tasto destro e ripristinabili dalle Impostazioni
 - Controllo aggiornamenti tramite GitHub Releases
 - Installer Windows per utente, senza privilegi amministrativi
@@ -35,7 +34,7 @@ I file compilati vengono creati in `dist/`.
 
 ## Aggiornamenti
 
-Il programma controlla la Release più recente di `MrDylanVERO/MultiRoblox`. Pubblicare nuove versioni con tag nel formato `v3.2.8`.
+Il programma controlla la Release più recente di `MrDylanVERO/MultiRoblox`. Pubblicare nuove versioni con tag nel formato `v3.2.9`.
 
 ## Nota
 

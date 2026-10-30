@@ -71,7 +71,7 @@ class GitHubRelease
 
 static class UpdateChecker
 {
-    public const string CurrentVersion = "3.2.8";
+    public const string CurrentVersion = "3.2.9";
     const string LatestReleaseApi = "https://api.github.com/repos/MrDylanVERO/MultiRoblox/releases/latest";
 
     public static void Check(Form owner, bool silent)
@@ -665,7 +665,7 @@ class MainForm : Form
     {
         using (Form f = new Form())
         {
-            Ui.SetupForm(f, 430, 530);
+            Ui.SetupForm(f, 430, 465);
             f.Text = Lang.Get("settings").Replace("⚙ ", "");
             f.StartPosition = FormStartPosition.CenterParent;
             f.ShowInTaskbar = false;
@@ -703,15 +703,11 @@ class MainForm : Form
             updates.Text = Lang.Get("updates");
             updates.Click += (s, e) => UpdateChecker.Check(this, false);
 
-            Button transfer = Ui.Btn(f, Ui.Card, 10, 30, 282, 370, 42);
-            transfer.Text = Lang.Get("transferPc");
-            transfer.Click += (s, e) => ShowTransfer(f);
-
-            Button hiddenAccounts = Ui.Btn(f, Ui.Card, 10, 30, 334, 370, 42);
+            Button hiddenAccounts = Ui.Btn(f, Ui.Card, 10, 30, 282, 370, 42);
             hiddenAccounts.Text = Lang.Get("hiddenAccounts");
             hiddenAccounts.Click += (s, e) => ShowHiddenAccounts(f);
 
-            Button save = Ui.Btn(f, Ui.Blue, 11, 105, 438, 220, 48);
+            Button save = Ui.Btn(f, Ui.Blue, 11, 105, 372, 220, 48);
             save.Text = Lang.Get("save");
             save.DialogResult = DialogResult.OK;
             f.AcceptButton = save;
